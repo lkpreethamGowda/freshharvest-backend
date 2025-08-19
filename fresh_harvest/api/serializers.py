@@ -53,7 +53,7 @@ class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True,read_only=True)
     class Meta:
         model=Order
-        fields=['user_id','address','amount','estimated_time','status','discount_id','items']
+        fields=['id','user_id','address','amount','estimated_time','status','discount_id','items']
 
 
 class OrderItemCreateSerializer(serializers.ModelSerializer):
@@ -84,6 +84,25 @@ class RecipeSerializer(serializers.ModelSerializer):
     class Meta:
         model= Recipe
         fields= '__all__'
+
+
+
+class UserRegistrationSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = User
+        fields = ("username", "password", "email", "name")
+
+    def create(self, validated_data):
+        user = User.objects.create_user(
+            username=validated_data["username"],
+            password=validated_data["password"],
+            email=validated_data.get("email", ""),
+            name=validated_data.get("name", ""),
+        )
+        Cart.objects.create(user_id=user)
+        return user
 
 
 

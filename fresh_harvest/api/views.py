@@ -3,7 +3,7 @@ from django.shortcuts import render
 # Create your views here.
 
 from rest_framework.response import Response
-from .serializers import ProductSerializer , FarmerSerializer , CartSerializer ,UserSerializers,DiscountSerializer, ReviewSerializer, CartItemSerializer, OrderSerializer,OrderNewSerializer,RecipeSerializer
+from .serializers import ProductSerializer , FarmerSerializer , CartSerializer ,UserSerializers,DiscountSerializer, ReviewSerializer, CartItemSerializer, OrderSerializer,OrderNewSerializer,RecipeSerializer,UserRegistrationSerializer
 
 
 from .models import Product , Farmer , CartItem ,Cart ,Discount , Review ,Order , OrderItem , Recipe
@@ -14,8 +14,37 @@ from rest_framework import mixins , viewsets
 from rest_framework import status
 from rest_framework.decorators import action
 from fresh_harvest.users.models import User
+from rest_framework import generics, permissions
+
+from django.urls import path
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
 
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def currentUser(request):
+
+    user = request.user
+    print(user.id)
+    return Response({
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+    })
+
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def clear_cart(request, cart_id):
+    try:
+        cart = Cart.objects.get(id=cart_id)
+        cart.items.all().delete()  # delete all CartItem objects related to this cart
+        return Response({"detail": "Cart cleared successfully"})
+    except Cart.DoesNotExist:
+        return Response({"detail": "Cart not found"}, status=404)
 
 
 class FarmerViewset(ModelViewSet):
@@ -32,14 +61,17 @@ class DiscountViewset(mixins.RetrieveModelMixin,mixins.ListModelMixin,viewsets.G
     queryset=Discount.objects.all()
     serializer_class=DiscountSerializer
     lookup_field='coupon'
+  
 
 class ProductViewset(ModelViewSet):
     queryset=Product.objects.all()
     serializer_class=ProductSerializer
+   
 
 class ProductSearchViewset(mixins.RetrieveModelMixin,mixins.ListModelMixin,viewsets.GenericViewSet):
     queryset=Product.objects.all()
     serializer_class=ProductSerializer
+    
     
 
     def get_queryset(self):
@@ -69,6 +101,7 @@ class ProductSearchViewset(mixins.RetrieveModelMixin,mixins.ListModelMixin,views
 class ReviewViewset(ModelViewSet):
     queryset=Review.objects.all()
     serializer_class=ReviewSerializer
+    permission_classes=[permissions.AllowAny]
 
     def get_queryset(self):
         queryset =  super().get_queryset()
@@ -92,6 +125,7 @@ class ReviewViewset(ModelViewSet):
 class CartViewset(mixins.CreateModelMixin,mixins.ListModelMixin,viewsets.GenericViewSet):
     queryset=Cart.objects.all()
     serializer_class=CartSerializer
+    
 
     def get_queryset(self):
         queryset =  super().get_queryset()
@@ -105,6 +139,7 @@ class CartViewset(mixins.CreateModelMixin,mixins.ListModelMixin,viewsets.Generic
 class CartItemViewset(ModelViewSet):
    
     serializer_class=CartItemSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         queryset=CartItem.objects.all()
@@ -113,7 +148,27 @@ class CartItemViewset(ModelViewSet):
             queryset=queryset.filter(cart_id=cart_id)
         return queryset
     
-    
+    @action(detail=True, methods=['patch'])
+    def increment(self, request, pk=None):
+        cart_item = self.get_object()
+        cart_item.count += 1
+        cart_item.save()
+        serializer = self.get_serializer(cart_item)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['patch'])
+    def decrement(self, request, pk=None):
+        cart_item = self.get_object()
+        if cart_item.count > 1:
+            cart_item.count -= 1
+            cart_item.save()
+        else:
+            
+            cart_item.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        serializer = self.get_serializer(cart_item)
+        return Response(serializer.data)
+
     @action(detail=False, methods=['post'], url_path='add-to-cart')
     def add_to_cart(self, request):
         data = request.data.copy()
@@ -166,6 +221,7 @@ class CartItemViewset(ModelViewSet):
 class DeleteCartItem(mixins.DestroyModelMixin,viewsets.GenericViewSet):
     serializer_class = CartItemSerializer
     queryset= CartItem.objects.all()
+    
 
     def destroy(self,request, *args,**kwargs):
         data= request.data
@@ -187,6 +243,7 @@ class DeleteCartItem(mixins.DestroyModelMixin,viewsets.GenericViewSet):
 class OrderViewset(mixins.RetrieveModelMixin,mixins.ListModelMixin,viewsets.GenericViewSet):
     queryset=Order.objects.all()
     serializer_class=OrderSerializer
+    permission_classes=[permissions.AllowAny]
 
     def get_queryset(self):
         queryset=Order.objects.all()
@@ -199,8 +256,14 @@ class OrderViewset(mixins.RetrieveModelMixin,mixins.ListModelMixin,viewsets.Gene
 class OrderAddViewset(ModelViewSet):
     queryset=Order.objects.all()
     serializer_class=OrderNewSerializer
+   
 
 class RecipeViewset(ModelViewSet):
     queryset=Recipe.objects.all()
     serializer_class=RecipeSerializer
+    permission_classes=[permissions.AllowAny]
 
+class UserRegistrationView(generics.CreateAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserRegistrationSerializer
+    permission_classes = [permissions.AllowAny]

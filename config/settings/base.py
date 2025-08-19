@@ -121,7 +121,7 @@ THIRD_PARTY_APPS = [
 
 LOCAL_APPS = [
     "fresh_harvest.users",
-    "fresh_harvest.api.apps.ApiConfig",
+   
     # Your stuff: custom apps go here
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps

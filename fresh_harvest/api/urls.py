@@ -1,5 +1,5 @@
 # In my_project/api/urls.py
-from django.urls import path
+from django.urls import path , include
 from . import views
 from rest_framework.routers import DefaultRouter
 
@@ -19,4 +19,11 @@ router.register(r'addorders',views.OrderAddViewset, basename="addOrder")  # Addi
 router.register(r'searchProducts',views.ProductSearchViewset, basename="searchProducts")# search the product based on product_name and filter = label,type and price range
 router.register(r'recipes',views.RecipeViewset, basename='recipes') 
 router.register(r'deleteCartItems',views.DeleteCartItem, basename="DeleteCartItem") # delete the cartItem
-urlpatterns = router.urls
+
+urlpatterns = [
+    path("currentUser/", views.currentUser, name="currentUser"),
+    path("clearCart/<int:cart_id>/", views.clear_cart, name="clearCart"),
+    path("register/", views.UserRegistrationView.as_view(), name="user-registration"),
+    path("", include(router.urls)),
+]
+
